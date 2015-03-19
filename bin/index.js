@@ -1,17 +1,24 @@
 var log = require('../lib/logging')('main');
-var Whitelist = require('../lib/whitelist');
-var Proxy     = require('../lib/proxy');
+var Proxy = require('../lib/proxy');
+
+//var Whitelist = require('../lib/whitelist');
+var Whitelist = require('../lib/whitelist-dummy');
+
 
 var whitelistOptions = {
   url: 'http://demo.ckan.org',
   updateInterval: 0,
-  rowsPerRequest: 500
+  rowsPerRequest: 500,
+  domains: [
+    'localhost',
+    'jamaika',
+    'requestb.in',
+    '127.0.0.1'
+  ]
 };
 
-var proxyOptions = {
+var proxyOptions = {};
 
-};
-/*
 Whitelist.create(whitelistOptions)
   .then(function(whitelist) {
     proxyOptions.whitelist = whitelist;
@@ -22,20 +29,3 @@ Whitelist.create(whitelistOptions)
     server.listen(9090);
   })
   .done();
-*/
-
-proxyOptions.whitelist = {
-  _domains: {
-    'localhost': true,
-    'jamaika': true,
-    'requestb.in': true
-  },
-  get: function() {
-    return Whitelist.prototype.get.apply(proxyOptions.whitelist);
-  },
-  contains: function() {
-    return Whitelist.prototype.contains.apply(proxyOptions.whitelist, arguments);
-  }
-};
-log.info("Starting server on port 9090");
-Proxy.create(proxyOptions).listen(9090);
