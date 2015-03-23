@@ -1,31 +1,44 @@
+#!/usr/bin/env node
 var log = require('../lib/logging')('main');
 var Proxy = require('../lib/proxy');
+var cluster = require('cluster');
+var hub = require('clusterhub');
+var WhitelistManager = require('../lib/whitelist').Manager;
+var Whitelist = require('../lib/whitelist').Whitelist;
+//var WhitelistManager = require('../lib/whitelist-dummy');
 
-//var Whitelist = require('../lib/whitelist');
-var Whitelist = require('../lib/whitelist-dummy');
 
+if (cluster.isMaster) {
 
-var whitelistOptions = {
-  url: 'http://demo.ckan.org',
-  updateInterval: 0,
-  rowsPerRequest: 500,
-  domains: [
-    'localhost',
-    'jamaika',
-    'requestb.in',
-    '127.0.0.1'
-  ]
-};
+  WhitelistManager.create({
+    url: 'http://demo.ckan.org',
+    updateInterval: 0,
+    rowsPerRequest: 500,
+    domains: [ 'localhost', 'jamaika', 'zoidberg', 'requestb.in', '127.0.0.1' ]
+  }).on('update', function(whitelist) {
+    log.debug('[MASTER] Whitelist changed.');
+    hub.emit('whitelist.update', whitelist.get());
+  });
 
-var proxyOptions = {};
+  var cpus = require('os').cpus().length;
+  for (var i = 0; i < cpus; ++i) {
+    cluster.fork();
+  }
 
-Whitelist.create(whitelistOptions)
-  .then(function(whitelist) {
-    proxyOptions.whitelist = whitelist;
-    return Proxy.create(proxyOptions);
-  })
-  .then(function(server) {
-    log.info("Starting server on port 9090");
-    server.listen(9090);
-  })
-  .done();
+  cluster.on('exit', function(worker, code, signal) {
+    console.log('worker ' + worker.process.pid + ' died');
+    if (!worker.suicide) cluster.fork();
+  });
+
+} else {
+
+  var proxy = Proxy.create({})
+
+  hub.on('whitelist.update', function(whitelist) {
+    log.debug('[WORKER] Setting changed.');
+    proxy.whitelist.set(whitelist);
+  });
+
+  log.info("Starting server on port 9090");
+  proxy.server.listen(9090);
+}
