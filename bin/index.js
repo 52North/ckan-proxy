@@ -13,7 +13,16 @@ var domains = [
   'zoidberg',
   'requestb.in',
   '127.0.0.1',
-  'sensorweb.demo.52north.org'
+  'sensorweb.demo.52north.org',
+  'google.com',
+  'facebook.com',
+  'amazon.com',
+  'twitter.com',
+  'github.com',
+  'cdnjs.cloudflare.com',
+  'maxcdn.bootstrapcdn.com',
+  'code.jquery.com',
+  'ajax.googleapis.com'
 ];
 
 if (cluster.isMaster) {
