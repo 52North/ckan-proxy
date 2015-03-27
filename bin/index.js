@@ -3,10 +3,18 @@ var log = require('../lib/logging')('main');
 var Proxy = require('../lib/proxy');
 var cluster = require('cluster');
 var hub = require('clusterhub');
-var WhitelistManager = require('../lib/whitelist').Manager;
+//var WhitelistManager = require('../lib/whitelist').Manager;
 var Whitelist = require('../lib/whitelist').Whitelist;
-//var WhitelistManager = require('../lib/whitelist-dummy');
+var WhitelistManager = require('../lib/whitelist-dummy').Manager;
 
+var domains = [
+  'localhost',
+  'jamaika',
+  'zoidberg',
+  'requestb.in',
+  '127.0.0.1',
+  'sensorweb.demo.52north.org'
+];
 
 if (cluster.isMaster) {
 
@@ -14,10 +22,12 @@ if (cluster.isMaster) {
     url: 'http://demo.ckan.org',
     updateInterval: 0,
     rowsPerRequest: 500,
-    domains: [ 'localhost', 'jamaika', 'zoidberg', 'requestb.in', '127.0.0.1' ]
+    domains: domains
   }).on('update', function(whitelist) {
+    var newdomains = whitelist.get();
+    Array.prototype.push.apply(newdomains, domains);
     log.debug('[MASTER] Whitelist changed.');
-    hub.emit('whitelist.update', whitelist.get());
+    hub.emit('whitelist.update', newdomains);
   });
 
   var cpus = require('os').cpus().length;
@@ -26,13 +36,14 @@ if (cluster.isMaster) {
   }
 
   cluster.on('exit', function(worker, code, signal) {
-    console.log('worker ' + worker.process.pid + ' died');
+    log.info('worker ' + worker.process.pid + ' died');
     if (!worker.suicide) cluster.fork();
   });
 
 } else {
 
-  var proxy = Proxy.create({})
+  var proxy = Proxy.create({});
+  proxy.whitelist.set(domains);
 
   hub.on('whitelist.update', function(whitelist) {
     log.debug('[WORKER] Setting changed.');
