@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "CKAN CORS Proxy",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/52North/ec-odp-mapapps",
+  "homepage": "https://github.com/52North/ckan-proxy",
   "repository": {
     "type": "git",
-    "url": "https://github.com/52North/ec-odp-mapapps.git"
+    "url": "https://github.com/52North/ckan-proxy.git"
   },
   "bugs": {
-    "url": "https://github.com/52North/ec-odp-mapapps/issues"
+    "url": "https://github.com/52North/ckan-proxy/issues"
   },
   "author": {
     "name": "Christian Autermann",
@@ -23,12 +23,6 @@
       "email": "c.autermann@52north.org"
     }
   ],
-  "directories": {
-    "doc": "./doc",
-    "man": "./man",
-    "lib": "./lib",
-    "bin": "./bin"
-  },
   "main": "./lib/proxy.js",
   "bin": "./bin/index.js",
   "dependencies": {
