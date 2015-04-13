@@ -66,7 +66,7 @@ npm install -g bunyan
 ### systemd
 Add a `node` user:
 ```sh
-useradd -rUmd /var/lib/node -s /bin/false node
+useradd -rUmd /var/lib/node -s /bin/bash node
 ```
 
 Create a unit file:
