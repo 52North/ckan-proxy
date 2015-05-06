@@ -1,54 +1,68 @@
 #!/usr/bin/env node
 
 var cluster = require('cluster');
-var hub = require('clusterhub');
 var os = require('os');
+var log = require('../lib/logging')('master');
 
-var log = require('../lib/logging')('main');
-var config = require('../lib/config');
-var Whitelist = require('../lib/whitelist');
-var Proxy = require('../lib/proxy');
 
-if (cluster.isMaster) {
-  createMaster();
-} else {
-  createWorker();
-}
+var proxyWorkers = {};
+var whitelistWorker;
 
-function createMaster() {
+cluster.on('exit', restart);
+start();
+
+function start() {
+  log.info("Forking...");
   var cpus = os.cpus().length;
-
-  Whitelist.Manager.create(config.whitelist)
-      .on('update', function(whitelist) {
-        var newdomains = whitelist.get();
-        // maintain additional domains across updates
-        log.debug('[MASTER] Whitelist changed.');
-        // send the whitelist to the workers
-        hub.emit('whitelist.update', newdomains);
-      });
-
-  cluster.on('exit', function(worker, code, signal) {
-    log.info('worker ' + worker.process.pid + ' died');
-    // restart a work if it wasn't suicide
-    if (!worker.suicide) cluster.fork();
-  });
-
+  forkWhitelistWorker();
   for (var i = 0; i < cpus; ++i) {
-    cluster.fork();
+    forkProxyWorker();
   }
 }
 
-function createWorker() {
-  var proxy = new Proxy(config.proxy);
-  // set up the initial whitelist
-  proxy.whitelist.set(config.whitelist.domains);
-  // listen for whitelist changes
-  hub.on('whitelist.update', function(whitelist) {
-    log.debug('[WORKER] Whitelist changed.');
-    proxy.whitelist.set(whitelist);
-  });
-  log.info("Starting server on port " + config.proxy.port);
+function noWorkersLeft() {
+  var count = 0;
+  for (var id in proxyWorkers) {
+    if (proxyWorkers.hasOwnProperty(id)) {
+      ++count;
+    }
+  }
+  return count > 0;
+}
 
-  // start the server
-  proxy.start();
+function restart(worker, code, signal) {
+  log.info('worker ' + worker.process.pid + ' died:', signal || code);
+
+  // respect that...
+  if (worker.suicide) {
+    if (noWorkersLeft()) {
+      return process.exit(1);
+    } else {
+      return;
+    }
+  }
+
+  if (worker.id === whitelistWorker.id) {
+    forkWhitelistWorker();
+  } else {
+    delete proxyWorkers[worker.id];
+    forkProxyWorker();
+  }
+}
+
+function forkWhitelistWorker() {
+  cluster.setupMaster({
+    exec: require.resolve('../lib/workers/whitelist')
+  });
+  whitelistWorker = cluster.fork();
+  return whitelistWorker;
+}
+
+function forkProxyWorker() {
+  cluster.setupMaster({
+    exec: require.resolve('../lib/workers/proxy')
+  });
+  var worker = cluster.fork();
+  proxyWorkers[worker.id] = worker;
+  return worker;
 }
