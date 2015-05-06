@@ -4,9 +4,11 @@ var cluster = require('cluster');
 var os = require('os');
 var log = require('../lib/logging')('master');
 
-
-var proxyWorkers = {};
-var whitelistWorker;
+var whitelist;
+var workers = {
+  whitelist: null,
+  proxy: {}
+};
 
 cluster.on('exit', restart);
 start();
@@ -22,8 +24,8 @@ function start() {
 
 function noWorkersLeft() {
   var count = 0;
-  for (var id in proxyWorkers) {
-    if (proxyWorkers.hasOwnProperty(id)) {
+  for (var id in workers.proxy) {
+    if (workers.proxy.hasOwnProperty(id)) {
       ++count;
     }
   }
@@ -42,10 +44,10 @@ function restart(worker, code, signal) {
     }
   }
 
-  if (worker.id === whitelistWorker.id) {
+  if (worker.id === workers.whitelist.id) {
     forkWhitelistWorker();
   } else {
-    delete proxyWorkers[worker.id];
+    delete workers.proxy[worker.id];
     forkProxyWorker();
   }
 }
@@ -54,8 +56,21 @@ function forkWhitelistWorker() {
   cluster.setupMaster({
     exec: require.resolve('../lib/workers/whitelist')
   });
-  whitelistWorker = cluster.fork();
-  return whitelistWorker;
+  // keep track of the whitelist worker
+  workers.whitelist = cluster.fork();
+  workers.whitelist.on('message', function(message) {
+    log.info("Received message from whitelist worker", message);
+    if (message.cmd === 'whitelist.update') {
+      // save the whitelist for newly created proxy workers
+      whitelist = message.whitelist;
+      // propagate whitelist to proxy workers
+      for (var id in workers.proxy) {
+        log.info('Sending message to worker', id);
+        workers.proxy[id].send(message);
+      }
+    }
+  });
+  return workers.whitelist;
 }
 
 function forkProxyWorker() {
@@ -63,6 +78,18 @@ function forkProxyWorker() {
     exec: require.resolve('../lib/workers/proxy')
   });
   var worker = cluster.fork();
-  proxyWorkers[worker.id] = worker;
+  // keep track of the proxy worker
+  workers.proxy[worker.id] = worker;
+  // send whitelist to new worker
+  worker.on('online', function() {
+    log.info('Worker', worker.id, 'is online');
+    if (whitelist) {
+      log.info('Sending message to worker', worker.id);
+      worker.send({
+        cmd: 'whitelist.updated',
+        whitelist: whitelist
+      });
+    }
+  });
   return worker;
 }
