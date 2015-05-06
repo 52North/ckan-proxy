@@ -14,7 +14,7 @@ cluster.on('exit', restart);
 start();
 
 function start() {
-  log.info("Forking...");
+  log.info('Forking...');
   var cpus = os.cpus().length;
   forkWhitelistWorker();
   for (var i = 0; i < cpus; ++i) {
@@ -22,14 +22,13 @@ function start() {
   }
 }
 
-function noWorkersLeft() {
-  var count = 0;
+function hasProxyWorkers() {
   for (var id in workers.proxy) {
     if (workers.proxy.hasOwnProperty(id)) {
-      ++count;
+      return true;
     }
   }
-  return count > 0;
+  return false;
 }
 
 function restart(worker, code, signal) {
@@ -37,7 +36,7 @@ function restart(worker, code, signal) {
 
   // respect that...
   if (worker.suicide) {
-    if (noWorkersLeft()) {
+    if (!hasProxyWorkers()) {
       return process.exit(1);
     } else {
       return;
@@ -59,13 +58,13 @@ function forkWhitelistWorker() {
   // keep track of the whitelist worker
   workers.whitelist = cluster.fork();
   workers.whitelist.on('message', function(message) {
-    log.info("Received message from whitelist worker", message);
-    if (message.cmd === 'whitelist.update') {
+    log.trace('Received message from whitelist worker');
+    if (message && message.cmd === 'whitelist.update') {
       // save the whitelist for newly created proxy workers
       whitelist = message.whitelist;
       // propagate whitelist to proxy workers
       for (var id in workers.proxy) {
-        log.info('Sending message to worker', id);
+        log.trace('Sending message to worker', id);
         workers.proxy[id].send(message);
       }
     }
@@ -81,10 +80,10 @@ function forkProxyWorker() {
   // keep track of the proxy worker
   workers.proxy[worker.id] = worker;
   // send whitelist to new worker
-  worker.on('online', function() {
-    log.info('Worker', worker.id, 'is online');
+  worker.on('listening', function() {
+    log.trace('Worker', worker.id, 'is online');
     if (whitelist) {
-      log.info('Sending message to worker', worker.id);
+      log.trace('Sending message to worker', worker.id);
       worker.send({
         cmd: 'whitelist.updated',
         whitelist: whitelist
