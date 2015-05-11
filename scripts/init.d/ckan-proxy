@@ -1,0 +1,121 @@
+#!/bin/sh -e
+
+NAME='ckan-proxy'
+USER='node'
+EXEC="/usr/bin/$NAME"
+PARAM="/etc/$NAME.json"
+
+
+PID_FILE="/var/run/node/$NAME.pid"
+LOG_FILE="/var/log/node/$NAME.log"
+PATH='/sbin:/usr/sbin:/bin:/usr/bin'
+
+USAGE="Usage: $0 {start|stop|restart|status} [--force]"
+FORCE_OP=false
+
+pid_file_exists() {
+    [ -f "$PID_FILE" ]
+}
+
+get_pid() {
+    echo "$(cat "$PID_FILE")"
+}
+
+is_running() {
+    PID=$(get_pid)
+    ! [ -z "$(ps aux | awk '{print $2}' | grep "^$PID$")" ]
+}
+
+start_it() {
+    mkdir -p "$(dirname ${PID_FILE})" "$(dirname ${LOG_FILE})"
+    echo "Starting $NAME ..."
+    pid=$(su - ${USER} -c "$EXEC ${PARAM} 1>>${LOG_FILE} 2>&1 & echo \$!")
+    echo $pid > $PID_FILE
+    echo "$NAME started with pid $pid"
+}
+
+stop_process() {
+    PID=$(get_pid)
+    echo "Killing process $PID"
+    kill $PID
+}
+
+remove_pid_file() {
+    echo "Removing pid file"
+    rm -f "$PID_FILE"
+}
+
+start_app() {
+    if pid_file_exists; then
+        if is_running; then
+            PID=$(get_pid)
+            echo "$NAME already running with pid $PID"
+            exit 1
+        else
+            echo "$NAME stopped, but pid file exists"
+            if [ $FORCE_OP = true ]; then
+                echo "Forcing start anyways"
+                remove_pid_file
+                start_it
+            fi
+        fi
+    else
+        start_it
+    fi
+}
+
+stop_app() {
+    if pid_file_exists; then
+        if is_running; then
+            echo "Stopping $NAME ..."
+            stop_process
+            remove_pid_file
+            echo "$NAME stopped"
+        else
+            echo "$NAME already stopped, but pid file exists"
+            if [ $FORCE_OP = true ]; then
+                echo "Forcing stop anyways ..."
+                remove_pid_file
+                echo "$NAME stopped"
+            else
+                exit 1
+            fi
+        fi
+    else
+        echo "$NAME already stopped, pid file does not exist"
+        exit 1
+    fi
+}
+
+status_app() {
+    if pid_file_exists; then
+        if is_running; then
+            PID=$(get_pid)
+            echo "$NAME running with pid $PID"
+        else
+            echo "$NAME stopped, but pid file exists"
+        fi
+    else
+        echo "$NAME stopped"
+    fi
+}
+
+case "$2" in
+    --force) FORCE_OP=true ;;
+    "") ;;
+    *)
+        echo $USAGE
+        exit 1
+    ;;
+esac
+
+case "$1" in
+    start) start_app ;;
+    stop) stop_app ;;
+    restart) stop_app; start_app ;;
+    status) status_app ;;
+    *)
+        echo $USAGE
+        exit 1
+    ;;
+esac

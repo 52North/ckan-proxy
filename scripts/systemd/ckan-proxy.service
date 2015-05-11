@@ -1,0 +1,13 @@
+[Unit]
+Description=CKAN Proxy Server
+After=network.target
+Requires=network.target
+
+[Service]
+ExecStart=/usr/bin/ckan-proxy /etc/ckan-proxy.json
+User=node
+Group=node
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
