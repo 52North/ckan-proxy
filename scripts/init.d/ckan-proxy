@@ -18,7 +18,7 @@ pid_file_exists() {
 }
 
 get_pid() {
-    echo "$(cat "$PID_FILE")"
+    cat "$PID_FILE"
 }
 
 is_running() {
@@ -29,9 +29,9 @@ is_running() {
 start_it() {
     mkdir -p "$(dirname ${PID_FILE})" "$(dirname ${LOG_FILE})"
     echo "Starting $NAME ..."
-    pid=$(su - ${USER} -c "$EXEC ${PARAM} 1>>${LOG_FILE} 2>&1 & echo \$!")
-    echo $pid > $PID_FILE
-    echo "$NAME started with pid $pid"
+    PID=$(su - ${USER} -c "$EXEC ${PARAM} 1>>${LOG_FILE} 2>&1 & echo \$!")
+    echo $PID > $PID_FILE
+    echo "$NAME started with pid $PID"
 }
 
 stop_process() {
