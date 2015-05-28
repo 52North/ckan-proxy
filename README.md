@@ -107,18 +107,19 @@ Call `ckan-proxy` with the path to a JSON configuration file as the first argume
 ```
 ### Logging
 
-You can use `bunyan` [configuration options](https://github.com/trentm/node-bunyan#streams) in the settings:
+You can use `bunyan` [configuration options][bunyan-streams] in the settings:
 
 ```json
 {
   "logging": {
     "level": "info",
-    "type": "rotating-file",
     "path": "/var/log/ckan-proxy.log",
-    "period": "1d",
-    "count": 3
   }
 }
 ```
 
-[bunyan]: <https://github.com/trentm/node-bunyan> "bunyan"
+Be aware that this module uses the [`cluster`][cluster] module and rolling file streams are **not** compatible.
+
+[bunyan]: <https://github.com/trentm/node-bunyan>
+[bunyan-streams]: <https://github.com/trentm/node-bunyan#streams>
+[cluster]: <https://nodejs.org/api/cluster.html>
