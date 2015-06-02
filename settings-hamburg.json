@@ -1,0 +1,15 @@
+{
+  "logging": {
+    "level": "trace"
+  },
+  "whitelist": {
+    "ckan": {
+      "enabled": true,
+      "url": "http://suche.transparenz.hamburg.de",
+      "updateInterval": 1
+    },
+    "domains": [
+      "suche.transparenz.hamburg.de"
+    ]
+  }
+}
