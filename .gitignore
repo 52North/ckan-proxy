@@ -46,3 +46,4 @@ node_modules
 # sftp configuration file
 sftp-config.json
 
+/settings-edp.json
