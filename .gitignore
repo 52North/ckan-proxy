@@ -47,3 +47,5 @@ node_modules
 sftp-config.json
 
 /settings-edp.json
+/data/whitelist.json
+/settings-edp-ppe.json
