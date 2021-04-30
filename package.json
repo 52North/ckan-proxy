@@ -29,6 +29,6 @@
     "bluebird": "^2.9.25",
     "bunyan": "^1.3.5",
     "extend": "^2.0.1",
-    "request-promise": "^0.4.2"
+    "request-promise": "^4.2.6"
   }
 }
